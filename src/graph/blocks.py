@@ -117,8 +117,8 @@ class BaseBlock:
     def connectVariableToVariable(
         self,
         block: "BaseBlock",
-        from_port_var_name: str,
-        to_port_var_name: str,
+        from_port_var_name: Optional[str] = None,
+        to_port_var_name: Optional[str] = None,
         create_if_not_exists: Optional[bool] = True,
     ):
         """Create a connection between two ports of two blocks.
@@ -144,7 +144,7 @@ class BaseBlock:
                     f"Variable name '{from_port_var_name}' does not exist in the outputs."
                 )
             # No existing port with that name. Create new one
-            self.addOutputPort(from_port_var_name)
+            from_port_var_name = self.addOutputPort(from_port_var_name)
             from_port = self._outputs.getPort(from_port_var_name)
         to_port = block._inputs.getPort(to_port_var_name)
         if to_port is None:
@@ -153,7 +153,7 @@ class BaseBlock:
                     f"Variable name '{to_port_var_name}' does not exist in the inputs."
                 )
             # No existing port with that name. Create new one
-            block.addInputPort(to_port_var_name)
+            to_port_var_name = block.addInputPort(to_port_var_name)
             to_port = block._inputs.getPort(to_port_var_name)
         _ = Connection(from_port, to_port)
 
@@ -170,7 +170,7 @@ class BaseBlock:
             self.getOutgoingConnections()
         )
 
-    def getIncomingNeighbors(self):
+    def getIncomingNeighbors(self) -> Set["BaseBlock"]:
         """Get all the incoming neighbors of the block."""
         neighbors = set()
         for connection in self.getIncomingConnections():
@@ -180,7 +180,7 @@ class BaseBlock:
                 neighbors.add(connection.to_block)
         return neighbors
 
-    def getOutgoingNeighbors(self):
+    def getOutgoingNeighbors(self) -> Set["BaseBlock"]:
         """Get all the outgoing neighbors of the block."""
         neighbors = set()
         for connection in self.getOutgoingConnections():
@@ -193,3 +193,7 @@ class BaseBlock:
     def getAllNeighbors(self) -> Set["BaseBlock"]:
         """Get all the neighbors of the block."""
         return self.getIncomingNeighbors().union(self.getOutgoingNeighbors())
+
+    def run(self) -> None:
+        """Run the block."""
+        raise NotImplementedError

@@ -1,44 +1,24 @@
 # Routines-related functions and classes
 from typing import Optional, Any, List, Union
 from collections import UserList
+from src.graph.blocks import BaseBlock
 
 
 RoutineListType = Union[List["Routine"], "RoutineCollection"]
 OneOrMoreRoutinesType = Union["Routine", RoutineListType]
 
 
-class Routine:
+class Routine(BaseBlock):
     def __init__(
         self,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
         subroutines: Optional[OneOrMoreRoutinesType] = None,
+        **kwargs: Any,
     ):
-        self._name = name
-        self._description = description or ""
+        super().__init__(**kwargs)
         self.subroutines = subroutines or RoutineCollection()
-
-    @property
-    def name(self) -> str:
-        return self._name or ""
-
-    @name.setter
-    def name(self, new_name: str) -> None:
-        self._name = new_name
-
-    @property
-    def description(self) -> str:
-        return self._description
-
-    @description.setter
-    def description(self, new_description: str) -> None:
-        self._description = new_description
 
     def __str__(self) -> str:
         return f"<R({self.name}): {self.description}>"
-
-    def __repr__(self) -> str:
-        return self.__str__()
 
 
 class RoutineCollection(UserList):
