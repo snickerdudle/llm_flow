@@ -1,6 +1,6 @@
 # Code describing the functional blocks of the graph.
 from functools import wraps
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Set
 from uuid import uuid4
 
 from src.graph.connections import (
@@ -15,9 +15,12 @@ from src.graph.connections import (
 class BaseBlock:
     """The base class for all blocks in the graph."""
 
-    def __init__(self, name: Optional[str] = None):
+    def __init__(
+        self, name: Optional[str] = None, description: Optional[str] = None
+    ):
         self._id = uuid4().hex
         self._name = name
+        self._description = description
         self._inputs = self.initilizeInputs()
         self._outputs = self.initilizeOutputs()
 
@@ -32,6 +35,14 @@ class BaseBlock:
     @name.setter
     def name(self, new_name: str) -> None:
         self._name = new_name
+
+    @property
+    def description(self) -> str:
+        return self._description or "NO_DESCRIPTION"
+
+    @description.setter
+    def description(self, new_description: str) -> None:
+        self._description = new_description
 
     @property
     def inputs(self) -> ConnectionHub:
@@ -146,16 +157,39 @@ class BaseBlock:
             to_port = block._inputs.getPort(to_port_var_name)
         _ = Connection(from_port, to_port)
 
-    def getAllConnections(self) -> List[Connection]:
-        """Get the connections of the block."""
-        return self._inputs.getConnections() + self._outputs.getConnections()
+    def getIncomingConnections(self) -> Set[Connection]:
+        """Get the incoming connections of the block."""
+        return self._inputs.getConnections()
 
-    def getAllNeighbors(self) -> List["BaseBlock"]:
-        """Get all the neighbors of the block."""
-        neighbors = []
-        for connection in self.getAllConnections():
+    def getOutgoingConnections(self) -> Set[Connection]:
+        return self._outputs.getConnections()
+
+    def getAllConnections(self) -> Set[Connection]:
+        """Get the connections of the block."""
+        return self.getIncomingConnections().union(
+            self.getOutgoingConnections()
+        )
+
+    def getIncomingNeighbors(self):
+        """Get all the incoming neighbors of the block."""
+        neighbors = set()
+        for connection in self.getIncomingConnections():
             if connection.from_block is not self:
-                neighbors.append(connection.from_block)
+                neighbors.add(connection.from_block)
             else:
-                neighbors.append(connection.to_block)
+                neighbors.add(connection.to_block)
         return neighbors
+
+    def getOutgoingNeighbors(self):
+        """Get all the outgoing neighbors of the block."""
+        neighbors = set()
+        for connection in self.getOutgoingConnections():
+            if connection.from_block is not self:
+                neighbors.add(connection.from_block)
+            else:
+                neighbors.add(connection.to_block)
+        return neighbors
+
+    def getAllNeighbors(self) -> Set["BaseBlock"]:
+        """Get all the neighbors of the block."""
+        return self.getIncomingNeighbors().union(self.getOutgoingNeighbors())

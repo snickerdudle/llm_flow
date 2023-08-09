@@ -5,6 +5,7 @@ from graph.blocks import (
     BaseBlock,
 )
 from src.graph.connections import (
+    Connection,
     ConnectionHub,
     HubType,
     PortVariableNameError,
@@ -12,6 +13,15 @@ from src.graph.connections import (
 
 
 class TestBaseBlock(unittest.TestCase):
+    def setUp(self):
+        self.block1 = BaseBlock(1)
+        self.block2 = BaseBlock(2)
+        self.block3 = BaseBlock(3)
+
+        self.block1.connectVariableToVariable(self.block2, "output", "input")
+        self.block2.connectVariableToVariable(self.block3, "output", "input")
+        self.block1.connectVariableToVariable(self.block3, "output", "input")
+
     def test_initialization(self):
         block = BaseBlock(name="TestBlock")
         self.assertEqual(block.name, "TestBlock")
@@ -97,6 +107,46 @@ class TestBaseBlock(unittest.TestCase):
             )
         self.assertIsNone(block1.outputs.getPort("output_test"))
         self.assertIsNone(block2.inputs.getPort("input_test"))
+
+    def test_getIncomingConnections(self):
+        self.assertEqual(len(self.block1.getIncomingConnections()), 0)
+        self.assertEqual(len(self.block2.getIncomingConnections()), 1)
+        self.assertEqual(len(self.block3.getIncomingConnections()), 2)
+
+    def test_getOutgoingConnections(self):
+        self.assertEqual(len(self.block1.getOutgoingConnections()), 2)
+        self.assertEqual(len(self.block2.getOutgoingConnections()), 1)
+        self.assertEqual(len(self.block3.getOutgoingConnections()), 0)
+
+    def test_getAllConnections(self):
+        self.assertEqual(len(self.block1.getAllConnections()), 2)
+        self.assertEqual(len(self.block2.getAllConnections()), 2)
+        self.assertEqual(len(self.block3.getAllConnections()), 2)
+
+    def test_getIncomingNeighbors(self):
+        self.assertSetEqual(self.block1.getIncomingNeighbors(), set())
+        self.assertSetEqual(self.block2.getIncomingNeighbors(), {self.block1})
+        self.assertSetEqual(
+            self.block3.getIncomingNeighbors(), {self.block1, self.block2}
+        )
+
+    def test_getOutgoingNeighbors(self):
+        self.assertSetEqual(
+            self.block1.getOutgoingNeighbors(), {self.block2, self.block3}
+        )
+        self.assertSetEqual(self.block2.getOutgoingNeighbors(), {self.block3})
+        self.assertSetEqual(self.block3.getOutgoingNeighbors(), set())
+
+    def test_getAllNeighbors(self):
+        self.assertSetEqual(
+            self.block1.getAllNeighbors(), {self.block2, self.block3}
+        )
+        self.assertSetEqual(
+            self.block2.getAllNeighbors(), {self.block1, self.block3}
+        )
+        self.assertSetEqual(
+            self.block3.getAllNeighbors(), {self.block1, self.block2}
+        )
 
 
 if __name__ == "__main__":

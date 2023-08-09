@@ -71,6 +71,18 @@ class Connection:
             return None
         return self.to_port.parent_block
 
+    @property
+    def from_hub(self) -> Optional[Any]:
+        if self.from_port is None:
+            return None
+        return self.from_port.parent_hub
+
+    @property
+    def to_hub(self) -> Optional[Any]:
+        if self.to_port is None:
+            return None
+        return self.to_port.parent_hub
+
     def __str__(self) -> str:
         return f"<CX({self.id})>"
 
@@ -195,6 +207,26 @@ class ConnectionHub:
     def isInput(self) -> bool:
         return self.kind == HubType.INPUT
 
+    @property
+    def portDict(self) -> OrderedDict[Port]:
+        return self._ports
+
+    @property
+    def portList(self) -> List[Port]:
+        return list(self.portDict.values())
+
+    @property
+    def portNames(self) -> List[str]:
+        return list(self.portDict.keys())
+
+    @property
+    def numPorts(self) -> int:
+        return len(self.portDict)
+
+    def isEmpty(self) -> bool:
+        """Return True if the hub is empty."""
+        return len(self.getConnections()) == 0
+
     def __str__(self) -> str:
         return f"<CXH({self.kind})>"
 
@@ -211,6 +243,7 @@ class ConnectionHub:
                 connection.from_port = port
 
     @check_editable
+    @enforce_type({1: str, 2: "Connection"})
     def addPort(
         self,
         var_name: Optional[str] = None,
@@ -235,23 +268,23 @@ class ConnectionHub:
         if var_name is None:
             # Generate a variable name like 'var1', 'var2', etc.
             while True:
-                var_name = f"var{len(self._ports) + 1}"
-                if var_name not in self._ports:
+                var_name = f"var{self.numPorts + 1}"
+                if var_name not in self.portDict:
                     break
-        if var_name in self._ports:
+        if var_name in self.portDict:
             raise PortVariableNameError(
                 f"Variable name '{var_name}' already exists. Please use a different name."
             )
         new_port = Port(connection=connection, parent=self)
-        self._ports[var_name] = new_port
+        self.portDict[var_name] = new_port
         return var_name
 
     @check_editable
     def removePort(self, var_name: str) -> None:
         """Remove a port from the hub."""
-        if var_name in self._ports:
-            self._ports[var_name].removeAllConnections()
-            del self._ports[var_name]
+        if var_name in self.portDict:
+            self.portDict[var_name].removeAllConnections()
+            del self.portDict[var_name]
         else:
             raise PortVariableNameError(
                 f"Variable name '{var_name}' does not exist."
@@ -272,50 +305,48 @@ class ConnectionHub:
             ConnectionVariableNameError: Raised if the variable name already
                 exists.
         """
-        if new_var_name in self._ports:
+        if new_var_name in self.portDict:
             raise PortVariableNameError(
                 f"Variable name '{new_var_name}' already exists. Please use a different name."
             )
-        if old_var_name not in self._ports:
+        if old_var_name not in self.portDict:
             raise PortVariableNameError(
                 f"Variable name '{old_var_name}' does not exist."
             )
-        self._ports[new_var_name] = self._ports.pop(old_var_name)
+        self.portDict[new_var_name] = self.portDict.pop(old_var_name)
         return new_var_name
 
+    @enforce_type({1: str})
     def getPort(self, var_name: str) -> Port:
         """Get the port with the given variable name."""
-        return self._ports.get(var_name)
+        return self.portDict.get(var_name)
 
-    def getConnections(self) -> List[Connection]:
+    def getConnections(self) -> Set[Connection]:
         """Get the connections of the hub."""
-        connections = []
-        for port in self._ports.values():
-            if port.connection is not None:
-                connections.append(port.connection)
+        connections = set()
+        for port in self.portList:
+            # Expand the set by the connections of the port
+            connections = connections.union(port.connections)
         return connections
 
-    def getConnectionsByNode(self, node: Any) -> List[Connection]:
-        """Get the connections of the hub that are connected to the given node."""
-        connections = []
-        for port in self._ports.values():
-            connection = port.connection
-            if connection is None:
-                continue
-            if connection.from_block == node or connection.to_block == node:
-                connections.append(connection)
+    def getConnectionsByBlock(self, block: Any) -> Set[Connection]:
+        """Get the connections of the hub that are connected to the given block."""
+        connections = set()
+        for port in self.portList:
+            for connection in port.connections:
+                if (
+                    connection.from_block == block
+                    or connection.to_block == block
+                ):
+                    connections.add(connection)
         return connections
 
+    @enforce_type({1: "ConnectionHub"})
     def getConnectionsByHub(self, hub: "ConnectionHub") -> List[Connection]:
         """Get the connections of the hub that are connected to the given node."""
-        connections = []
-        for port in self._ports.values():
-            connection = port.connection
-            if connection is None:
-                continue
-            if (
-                connection.from_port.parent_hub == hub
-                or connection.to_port.parent_hub == hub
-            ):
-                connections.append(connection)
+        connections = set()
+        for port in self.portList:
+            for connection in port.connections:
+                if connection.from_hub == hub or connection.to_hub == hub:
+                    connections.add(connection)
         return connections
