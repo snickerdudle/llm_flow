@@ -1,16 +1,22 @@
 # Code describing the functional blocks of the graph.
 from collections import OrderedDict
 from enum import Enum
-from functools import wraps
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, List, Optional, Set, Tuple, Union
 from uuid import uuid4
+
+from src.utils.utils import PortVariableNameError, check_editable, enforce_type
 
 
 class VariableValue:
     def __init__(self, value: Optional[Any] = None):
+        self._id = uuid4().hex
         self._value = value
         self._available = self._value is not None
         self._reliable = False
+
+    @property
+    def id(self) -> str:
+        return self._id
 
     @property
     def isReliable(self) -> bool:
@@ -35,6 +41,7 @@ class VariableValue:
 
 
 class Connection:
+    @enforce_type({1: "Port", 2: "Port"})
     def __init__(
         self,
         from_port: Optional["Port"] = None,
@@ -42,17 +49,9 @@ class Connection:
     ):
         self._id = uuid4().hex
         if from_port is not None:
-            if not isinstance(from_port, Port):
-                raise TypeError(
-                    f"from_port must be of type Port, not {type(from_port)}."
-                )
-            from_port.setConnection(self)
+            from_port.addConnection(self)
         if to_port is not None:
-            if not isinstance(to_port, Port):
-                raise TypeError(
-                    f"to_port must be of type Port, not {type(to_port)}."
-                )
-            to_port.setConnection(self)
+            to_port.addConnection(self)
         self.from_port = from_port
         self.to_port = to_port
 
@@ -78,14 +77,22 @@ class Connection:
     def __repr__(self) -> str:
         return self.__str__()
 
+    def removeSelfFromPorts(self) -> None:
+        if self.from_port is not None:
+            self.from_port.removeConnection(self)
+        if self.to_port is not None:
+            self.to_port.removeConnection(self)
+
 
 class Port:
+    @enforce_type({2: "Connection", 3: "ConnectionHub"})
     def __init__(
         self,
         value: Optional[Union[VariableValue, Any]] = None,
         connection: Optional[Connection] = None,
         parent: Optional["ConnectionHub"] = None,
     ):
+        self._id = uuid4().hex
         if value is not None:
             if not isinstance(value, VariableValue):
                 value = VariableValue(value)
@@ -93,20 +100,21 @@ class Port:
             value = VariableValue()
         self._value = value
         self._parent = parent
+        self._connections = set()
         if connection is not None:
-            if not isinstance(connection, Connection):
-                raise TypeError(
-                    f"connection must be of type Connection, not {type(connection)}."
-                )
             if self.isInput:
                 connection.to_port = self
             else:
                 connection.from_port = self
-        self._connection = connection
+            self._connections.add(connection)
 
     @property
-    def connection(self) -> Optional[Connection]:
-        return self._connection
+    def id(self) -> str:
+        return self._id
+
+    @property
+    def connections(self) -> Set[Connection]:
+        return self._connections
 
     @property
     def parent_hub(self) -> Optional["ConnectionHub"]:
@@ -130,40 +138,28 @@ class Port:
     def setValue(self, value: Any) -> None:
         self._value.setValue(value)
 
-    def setConnection(self, new_connection: Optional[Connection]) -> None:
-        if new_connection is not self.connection:
+    def addConnection(self, new_connection: Optional[Connection]) -> None:
+        if self.isInput:
             self._value.makeUnreliable()
-            self._connection = new_connection
+        self._connections.add(new_connection)
 
-    def unsetConnection(self) -> None:
-        self._connection = None
-        self._value.makeUnreliable()
+    def removeConnection(self, connection: Optional[Connection]) -> None:
+        self._connections.discard(connection)
+        if self.isInput:
+            self._value.makeUnreliable()
+
+    def removeAllConnections(self) -> None:
+        for connection in self._connections:
+            connection.removeSelfFromPsorts()
+        self._connections.clear()
+        if self.isInput:
+            self._value.makeUnreliable()
 
 
 class HubType(Enum):
     INPUT = 1
     OUTPUT = 2
     INTERNAL = 3
-
-
-class PortVariableNameError(Exception):
-    pass
-
-
-class HubEditError(Exception):
-    pass
-
-
-def check_editable(func):
-    """Decorator to check if the hub is editable."""
-
-    @wraps(func)
-    def wrapper(self, *args, **kwargs):
-        if not self.isEditable:
-            raise HubEditError("The hub is not editable.")
-        return func(self, *args, **kwargs)
-
-    return wrapper
 
 
 class ConnectionHub:
@@ -254,7 +250,7 @@ class ConnectionHub:
     def removePort(self, var_name: str) -> None:
         """Remove a port from the hub."""
         if var_name in self._ports:
-            self._ports[var_name].unsetConnection()
+            self._ports[var_name].removeAllConnections()
             del self._ports[var_name]
         else:
             raise PortVariableNameError(

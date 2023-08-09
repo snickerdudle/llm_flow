@@ -43,11 +43,11 @@ class TestBaseBlock(unittest.TestCase):
         block1.addOutputPort("output_test")
         block2.addInputPort("input_test")
         block1.connectVariableToVariable(block2, "output_test", "input_test")
-        self.assertIsNotNone(block1.outputs.getPort("output_test").connection)
-        self.assertIsNotNone(block2.inputs.getPort("input_test").connection)
+        self.assertIsNotNone(block1.outputs.getPort("output_test").connections)
+        self.assertIsNotNone(block2.inputs.getPort("input_test").connections)
         self.assertEqual(
-            block1.outputs.getPort("output_test").connection,
-            block2.inputs.getPort("input_test").connection,
+            block1.outputs.getPort("output_test").connections,
+            block2.inputs.getPort("input_test").connections,
         )
 
     def test_connect_blocks_output_does_not_exist(self):
@@ -55,11 +55,11 @@ class TestBaseBlock(unittest.TestCase):
         block2 = BaseBlock(name="TestBlock2")
         block2.addInputPort("input_test")
         block1.connectVariableToVariable(block2, "output_test", "input_test")
-        self.assertIsNotNone(block1.outputs.getPort("output_test").connection)
-        self.assertIsNotNone(block2.inputs.getPort("input_test").connection)
+        self.assertIsNotNone(block1.outputs.getPort("output_test").connections)
+        self.assertIsNotNone(block2.inputs.getPort("input_test").connections)
         self.assertEqual(
-            block1.outputs.getPort("output_test").connection,
-            block2.inputs.getPort("input_test").connection,
+            block1.outputs.getPort("output_test").connections,
+            block2.inputs.getPort("input_test").connections,
         )
 
     def test_connect_blocks_input_does_not_exist(self):
@@ -67,22 +67,22 @@ class TestBaseBlock(unittest.TestCase):
         block2 = BaseBlock(name="TestBlock2")
         block1.addOutputPort("output_test")
         block1.connectVariableToVariable(block2, "output_test", "input_test")
-        self.assertIsNotNone(block1.outputs.getPort("output_test").connection)
-        self.assertIsNotNone(block2.inputs.getPort("input_test").connection)
+        self.assertIsNotNone(block1.outputs.getPort("output_test").connections)
+        self.assertIsNotNone(block2.inputs.getPort("input_test").connections)
         self.assertEqual(
-            block1.outputs.getPort("output_test").connection,
-            block2.inputs.getPort("input_test").connection,
+            block1.outputs.getPort("output_test").connections,
+            block2.inputs.getPort("input_test").connections,
         )
 
     def test_connect_blocks_both_do_not_exist(self):
         block1 = BaseBlock(name="TestBlock1")
         block2 = BaseBlock(name="TestBlock2")
         block1.connectVariableToVariable(block2, "output_test", "input_test")
-        self.assertIsNotNone(block1.outputs.getPort("output_test").connection)
-        self.assertIsNotNone(block2.inputs.getPort("input_test").connection)
+        self.assertIsNotNone(block1.outputs.getPort("output_test").connections)
+        self.assertIsNotNone(block2.inputs.getPort("input_test").connections)
         self.assertEqual(
-            block1.outputs.getPort("output_test").connection,
-            block2.inputs.getPort("input_test").connection,
+            block1.outputs.getPort("output_test").connections,
+            block2.inputs.getPort("input_test").connections,
         )
 
     def test_connect_blocks_force_existence_constraint(self):

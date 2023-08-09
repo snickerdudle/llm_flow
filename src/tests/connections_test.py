@@ -79,11 +79,11 @@ class TestConnection(unittest.TestCase):
         self.assertEqual(p1, "test")
         self.assertEqual(p2, "test")
 
-        self.assertIsNotNone(hub1.getPort(p1).connection)
-        self.assertIsNotNone(hub2.getPort(p2).connection)
+        self.assertIsNotNone(hub1.getPort(p1).connections)
+        self.assertIsNotNone(hub2.getPort(p2).connections)
 
-        self.assertIs(hub1.getPort(p1).connection, cx)
-        self.assertIs(hub2.getPort(p2).connection, cx)
+        self.assertSetEqual(hub1.getPort(p1).connections, {cx})
+        self.assertSetEqual(hub2.getPort(p2).connections, {cx})
 
     def test_hub_edit_1(self):
         cx = Connection()
@@ -139,13 +139,13 @@ class TestPort(unittest.TestCase):
 
         cx = Connection()
         port = Port(connection=cx, parent=ConnectionHub(HubType.OUTPUT))
-        self.assertEqual(port.connection, cx)
-        self.assertEqual(port.connection.from_port, port)
+        self.assertSetEqual(port.connections, set([cx]))
+        self.assertEqual(cx.from_port, port)
 
         cx = Connection()
         port = Port(connection=cx, parent=ConnectionHub(HubType.INPUT))
-        self.assertEqual(port.connection, cx)
-        self.assertEqual(port.connection.to_port, port)
+        self.assertSetEqual(port.connections, set([cx]))
+        self.assertEqual(cx.to_port, port)
 
 
 class TestConnectionHub(unittest.TestCase):
