@@ -9,7 +9,19 @@ class TestGraph(unittest.TestCase):
     def test_getAllBlocksConnectedToBlock_singleBlock(self):
         graph = Graph()
         block = BaseBlock("A")
+        graph.addBlock(block)
         self.assertEqual(graph.getAllBlocksConnectedToBlock(block), {block})
+
+    def test_getAllBlocksConnectedToBlock_singleBlock_string(self):
+        graph = Graph()
+        block = BaseBlock("A")
+        graph.addBlock(block)
+        self.assertEqual(graph.getAllBlocksConnectedToBlock("A"), {block})
+
+    def test_getAllBlocksConnectedToBlock_singleBlock_string_noadd(self):
+        graph = Graph()
+        block = BaseBlock("A")
+        self.assertRaises(ValueError, graph.getAllBlocksConnectedToBlock, "A")
 
     def test_getAllBlocksConnectedToBlock_multipleBlocks(self):
         graph = Graph()
@@ -133,6 +145,85 @@ class TestGraph(unittest.TestCase):
             graph.getBlockEvaluationOrder(blockC),
             [blockC, blockE],
         )
+
+    def test_add_block_no_name(self):
+        graph = Graph()
+        graph.addBlock()
+        graph.addBlock()
+        graph.addBlock()
+
+        self.assertEqual(len(graph.blocks), 3)
+        self.assertSetEqual(
+            set([block.name for block in graph.blocks]),
+            {"block_0", "block_1", "block_2"},
+        )
+
+    def test_add_block_name_collision(self):
+        graph = Graph()
+        graph.addBlock("A")
+        self.assertRaises(ValueError, graph.addBlock, "A")
+        graph.addBlock(BaseBlock("B"))
+        graph.addBlock(BaseBlock())
+
+        self.assertEqual(len(graph.blocks), 3)
+        self.assertSetEqual(
+            set([block.name for block in graph.blocks]), {"A", "B", "NO_NAME"}
+        )
+
+    def test_remove_block(self):
+        graph = Graph()
+        block = BaseBlock("A")
+        graph.addBlock(block)
+        self.assertEqual(len(graph.blocks), 1)
+        graph.removeBlock(block)
+        self.assertEqual(len(graph.blocks), 0)
+
+        graph.addBlock("B")
+        graph.addBlock("C")
+        graph.removeBlock("B")
+        self.assertEqual(len(graph.blocks), 1)
+
+    def test_remove_block_not_in_graph(self):
+        graph = Graph()
+        block = BaseBlock("A")
+        graph.addBlock("B")
+
+        self.assertRaises(ValueError, graph.removeBlock, block)
+        self.assertRaises(ValueError, graph.removeBlock, "A")
+
+    def test_connect_blocks(self):
+        graph = Graph()
+        blockA = BaseBlock("A")
+        blockB = BaseBlock("B")
+        graph.addBlock(blockA)
+        graph.addBlock(blockB)
+
+        graph.connectBlocks(blockA, blockB)
+        self.assertEqual(len(blockA.getOutgoingNeighbors()), 1)
+        self.assertEqual(len(blockA.getOutgoingConnections()), 1)
+        self.assertEqual(len(blockB.getIncomingNeighbors()), 1)
+        self.assertEqual(len(blockB.getIncomingConnections()), 1)
+        self.assertEqual(
+            blockA.getOutgoingConnections(), blockB.getIncomingConnections()
+        )
+        self.assertEqual(len(graph.connections), 1)
+
+    def test_connect_blocks_string_name(self):
+        graph = Graph()
+        blockA = BaseBlock("A")
+        blockB = BaseBlock("B")
+        graph.addBlock(blockA)
+        graph.addBlock(blockB)
+
+        graph.connectBlocks("A", "B")
+        self.assertEqual(len(blockA.getOutgoingNeighbors()), 1)
+        self.assertEqual(len(blockA.getOutgoingConnections()), 1)
+        self.assertEqual(len(blockB.getIncomingNeighbors()), 1)
+        self.assertEqual(len(blockB.getIncomingConnections()), 1)
+        self.assertEqual(
+            blockA.getOutgoingConnections(), blockB.getIncomingConnections()
+        )
+        self.assertEqual(len(graph.connections), 1)
 
 
 if __name__ == "__main__":

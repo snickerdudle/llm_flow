@@ -5,7 +5,6 @@ from graph.blocks import (
     BaseBlock,
 )
 from src.graph.connections import (
-    Connection,
     ConnectionHub,
     HubType,
     PortVariableNameError,

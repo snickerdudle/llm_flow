@@ -136,6 +136,9 @@ class BaseBlock:
         Raises:
             PortVariableNameError: Raised if the variable name does not exist
                 and create_if_not_exists is False.
+
+        Returns:
+            connection: The connection created.
         """
         from_port = self._outputs.getPort(from_port_var_name)
         if from_port is None:
@@ -155,7 +158,8 @@ class BaseBlock:
             # No existing port with that name. Create new one
             to_port_var_name = block.addInputPort(to_port_var_name)
             to_port = block._inputs.getPort(to_port_var_name)
-        _ = Connection(from_port, to_port)
+        connection = Connection(from_port, to_port)
+        return connection
 
     def getIncomingConnections(self) -> Set[Connection]:
         """Get the incoming connections of the block."""

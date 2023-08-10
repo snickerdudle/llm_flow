@@ -1,5 +1,6 @@
-import functools
+from functools import wraps
 from inspect import signature
+from typing import List
 
 
 class PortVariableNameError(Exception):
@@ -10,9 +11,44 @@ class HubEditError(Exception):
     pass
 
 
+def autoBlockRetrieve(*idxs: List[int]):
+    """Decorator to automatically retrieve blocks from the graph."""
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            sig = signature(func)
+            parameters = list(sig.parameters)
+            graph = args[0]
+
+            # Map passed args and kwargs to their parameter names
+            bound_args = sig.bind(*args, **kwargs)
+            bound_args.apply_defaults()
+
+            # Check types
+            for idx in idxs:
+                param_name = parameters[idx]
+                actual_arg = bound_args.arguments[param_name]
+                if actual_arg is None:
+                    continue
+
+                if isinstance(actual_arg, str):
+                    # Convert to block
+                    block = graph.tryGetOrCreateNewBlock(
+                        actual_arg, create=False
+                    )
+                    bound_args.arguments[param_name] = block
+
+            return func(*bound_args.args, **bound_args.kwargs)
+
+        return wrapper
+
+    return decorator
+
+
 def enforce_type(type_mapping):
     def decorator(func):
-        @functools.wraps(func)
+        @wraps(func)
         def wrapper(*args, **kwargs):
             sig = signature(func)
             parameters = list(sig.parameters)
@@ -49,7 +85,7 @@ def enforce_type(type_mapping):
 def check_editable(func):
     """Decorator to check if the hub is editable."""
 
-    @functools.wraps(func)
+    @wraps(func)
     def wrapper(self, *args, **kwargs):
         if not self.isEditable:
             raise HubEditError("The hub is not editable.")

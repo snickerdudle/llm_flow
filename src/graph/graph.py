@@ -1,10 +1,13 @@
 # Code describing the graph
-from typing import Set, Optional
+from inspect import signature
+from typing import List, Set, Optional, Union
 from queue import Queue
 from uuid import uuid4
 
 from src.graph.blocks import BaseBlock
 from src.graph.connections import Connection
+from src.utils.utils import autoBlockRetrieve
+from functools import wraps
 
 BlockCollectionType = Set[BaseBlock]
 ConnectionCollection = Set[Connection]
@@ -17,7 +20,7 @@ class Graph:
         blocks: Optional[BlockCollectionType] = None,
     ):
         self._name = name or ""
-        self._blocks = blocks or set()
+        self._blocks = blocks or {}
         self._connections: ConnectionCollection = set()
 
     @property
@@ -30,17 +33,87 @@ class Graph:
 
     @property
     def blocks(self) -> BlockCollectionType:
-        return self._blocks
+        return set(self._blocks.values())
 
     @property
     def connections(self) -> ConnectionCollection:
         return self._connections
 
-    def addBlock(self, block: BaseBlock) -> None:
-        self.blocks.add(block)
+    def _checkBlockExists(self, block: Optional[Union[BaseBlock, str]]):
+        if block is None:
+            return False
+        if isinstance(block, BaseBlock):
+            block = block.name
+        return block in self._blocks
+
+    def tryGetOrCreateNewBlock(
+        self, block: Optional[Union[BaseBlock, str]], create: bool = True
+    ) -> BaseBlock:
+        """
+        If the given block is a string, try to get the block with that name.
+        If the block does not exist, create a new block with that name.
+        If the given block is a BaseBlock, return it.
+
+        Args:
+            block (Union[BaseBlock, str]): The block to get or add.
+
+        Returns:
+            BaseBlock: The block that was retrieved or created.
+        """
+        if create:
+            if block is None:
+                # Create new block name (str)
+                cur_num = 0
+                while True:
+                    block = f"block_{cur_num}"
+                    if block not in self._blocks:
+                        break
+                    cur_num += 1
+            if isinstance(block, str):
+                # Check to see if we have this block already, or create if we don't
+                if block in self._blocks:
+                    block = self._blocks[block]
+                else:
+                    block = BaseBlock(name=block)
+        else:
+            if block is None:
+                raise ValueError("Block cannot be None")
+            if isinstance(block, str):
+                if block in self._blocks:
+                    return self._blocks[block]
+                else:
+                    raise ValueError(f"Block {block} does not exist")
+
+        return block
+
+    def addBlock(self, block: Optional[Union[BaseBlock, str]] = None) -> None:
+        if self._checkBlockExists(block):
+            raise ValueError(f"Block {block} already in graph")
+        block = self.tryGetOrCreateNewBlock(block)
+        self._blocks[block.name] = block
+
+    @autoBlockRetrieve(1)
+    def removeBlock(self, block: Union[BaseBlock, str]) -> None:
+        if isinstance(block, BaseBlock):
+            block_name = block.name
+        else:
+            block_name = block
+        if block_name not in self._blocks:
+            raise ValueError(f"Block {block_name} not in graph")
+        block = self._blocks[block_name]
+
+        for connection in self.connections:
+            if connection.from_block == block or connection.to_block == block:
+                self.removeConnection(connection)
+
+        del self._blocks[block_name]
 
     def addConnection(self, connection: Connection) -> None:
         self.connections.add(connection)
+
+    def removeConnection(self, connection: Connection) -> None:
+        connection.removeSelfFromPorts()
+        self.connections.remove(connection)
 
     def __add__(self, other: BaseBlock) -> None:
         self.addBlock(other)
@@ -48,6 +121,33 @@ class Graph:
     def __iadd__(self, other: BaseBlock) -> None:
         self.addBlock(other)
 
+    @autoBlockRetrieve(1, 2)
+    def connectBlocks(
+        self,
+        from_block: BaseBlock,
+        to_block: BaseBlock,
+        from_varname: Optional[str] = None,
+        to_varname: Optional[str] = None,
+    ) -> None:
+        """Connect the given blocks.
+
+        Args:
+            from_block (BaseBlock): The block from which the connection
+                originates.
+            to_block (BaseBlock): The block to which the connection goes.
+            from_varname (Optional[str]): The name of the variable from which
+                the connection originates.
+            to_varname (Optional[str]): The name of the variable to which the
+                connection goes.
+        """
+        new_connection = from_block.connectVariableToVariable(
+            block=to_block,
+            from_port_var_name=from_varname,
+            to_port_var_name=to_varname,
+        )
+        self.addConnection(new_connection)
+
+    @autoBlockRetrieve(1)
     def getAllBlocksConnectedToBlock(
         self, block: BaseBlock
     ) -> BlockCollectionType:
@@ -73,6 +173,7 @@ class Graph:
 
         return connected_blocks
 
+    @autoBlockRetrieve(1)
     def getAllBlocksFollowingBlock(
         self, block: BaseBlock
     ) -> BlockCollectionType:
