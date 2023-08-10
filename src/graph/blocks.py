@@ -1,6 +1,6 @@
 # Code describing the functional blocks of the graph.
 from functools import wraps
-from typing import Any, List, Optional, Set
+from typing import Any, List, Optional, Set, Union
 from uuid import uuid4
 
 from src.graph.connections import (
@@ -10,8 +10,6 @@ from src.graph.connections import (
     Port,
     PortVariableNameError,
 )
-
-from src.utils.decorators import log_operation
 
 
 class BaseBlock:
@@ -25,6 +23,14 @@ class BaseBlock:
         self._description = description
         self._inputs = self.initilizeInputs()
         self._outputs = self.initilizeOutputs()
+        # Whether changes to the contents of the Block immediately invalidate
+        # the reliability of the outputs.
+        # If this is true, the outputs of the block (and all the downstream
+        # data) will be marked as unreliable every time the contents of the
+        # block change. This is useful to distinguish the outputs of a block
+        # as unreliable if the block has been changed, but the outputs have
+        # not been updated yet.
+        self.changes_affect_reliability = True
 
     @property
     def id(self) -> str:
@@ -37,6 +43,10 @@ class BaseBlock:
     @name.setter
     def name(self, new_name: str) -> None:
         self._name = new_name
+
+    @property
+    def qualname(self) -> str:
+        return f"{self.__class__.__name__}({self.name})"
 
     @property
     def description(self) -> str:
@@ -200,10 +210,86 @@ class BaseBlock:
         """Get all the neighbors of the block."""
         return self.getIncomingNeighbors().union(self.getOutgoingNeighbors())
 
-    @log_operation(True)
+    def makeOutputsUnreliable(self) -> None:
+        """Make all the outputs of the block unreliable."""
+        for port in self.outputs.portList:
+            port.makeUnreliable()
+
+        for neighbor in self.getOutgoingNeighbors():
+            neighbor.makeOutputsUnreliable()
+
+    def pushValues(self):
+        """Push the values of the block to the connected blocks."""
+        for connection in self.getOutgoingConnections():
+            connection.to_port.setValue(connection.from_port.getValue())
+
     def run(self) -> None:
         """Run the block."""
         # raise NotImplementedError
         print(f"Running {self.name}")
-        print(f"Inputs: {self.getIncomingNeighbors()}")
-        print(f"Outputs: {self.getOutgoingNeighbors()}")
+        print("Inputs:")
+        for portname, port in self.inputs.portDict.items():
+            for connection in port.connections:
+                print(
+                    f"  {portname}: {connection.from_port.getValue()} ({connection.from_block.name})"
+                )
+        print("Outputs:")
+        for portname in self.outputs.portDict:
+            print(f"  {portname}")
+
+
+class Variable(BaseBlock):
+    """A variable block, containing 1 or more values."""
+
+    def __init__(
+        self,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        variables: Optional[dict[str, Any]] = None,
+    ):
+        super().__init__(name, description)
+
+        # Iterate through the variables and add them as output ports
+        variables = variables or {"var1": 0}
+
+        for var_name, value in variables.items():
+            self.createNewVariable(var_name, value)
+
+        self.changes_affect_reliability = False
+
+    @property
+    def variables(self):
+        # Get the list of ports and their values
+        return {
+            port_name: port.getValue()
+            for port_name, port in self.outputs.portDict.items()
+        }
+
+    def createNewVariable(
+        self, var_name: Optional[str] = None, value: Optional[Any] = None
+    ):
+        new_var_name = self.addOutputPort(var_name)
+
+        port = self.outputs.getPort(new_var_name)
+        port.setValue(value)
+
+    def renameVariable(self, old_var_name: str, new_var_name: str) -> None:
+        """Rename a variable."""
+        self.outputs.renamePort(old_var_name, new_var_name)
+
+    def deleteVariable(self, var_name: str) -> None:
+        """Delete a variable."""
+        self.outputs.deletePort(var_name)
+
+    def editVariableValue(self, var_name: str, new_value: Any) -> None:
+        """Edit the value of a variable."""
+        port = self.outputs.getPort(var_name)
+        port.setValue(new_value)
+
+    def __str__(self) -> str:
+        return f"<V({self.name})>"
+
+    def run(self) -> None:
+        """Run the block."""
+        super(Variable, self).run()
+        print(f"Variables: {self.variables}")

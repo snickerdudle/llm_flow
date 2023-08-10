@@ -98,16 +98,14 @@ def log_operation(save_to_file: bool = False):
         @wraps(func)
         def wrapper(self, *args, **kwargs):
             logger = Logger()
-            logger.log(
-                f"Operation {func.__name__} called on block {self.name}", func
-            )
+            logger.log(f"<--- {self.qualname}", func)
 
             results = None
             try:
                 results = func(self, *args, **kwargs)
             except Exception as e:
                 logger.log(
-                    f"Operation {func.__name__} on block {self.name} failed with error: {e.__class__.__name__}",
+                    f"Operation on block {self.qualname} failed with error: {e.__class__.__name__}",
                     func,
                 )
 

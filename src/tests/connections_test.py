@@ -14,12 +14,12 @@ from src.graph.connections import (
 class TestVariableValue(unittest.TestCase):
     def test_initialization(self):
         vv = VariableValue()
-        self.assertIsNone(vv.getValue()[0])
+        self.assertIsNone(vv.getValue())
         self.assertFalse(vv.isAvailable)
         self.assertFalse(vv.isReliable)
 
         vv = VariableValue("Test")
-        self.assertEqual(vv.getValue()[0], "Test")
+        self.assertEqual(vv.getValue(), "Test")
         self.assertTrue(vv.isAvailable)
         self.assertFalse(vv.isReliable)
 
@@ -33,7 +33,7 @@ class TestVariableValue(unittest.TestCase):
     def test_setValue(self):
         vv = VariableValue()
         vv.setValue("ValueSet")
-        self.assertEqual(vv.getValue()[0], "ValueSet")
+        self.assertEqual(vv.getValue(), "ValueSet")
         self.assertTrue(vv.isAvailable)
 
 
@@ -131,11 +131,10 @@ class TestConnection(unittest.TestCase):
 class TestPort(unittest.TestCase):
     def test_initialization(self):
         port = Port()
-        self.assertIsNone(port.getValue()[0])
-        self.assertFalse(port.getValue()[1])
+        self.assertIsNone(port.getValue())
 
         port = Port(value="ValueSet")
-        self.assertEqual(port.getValue()[0], "ValueSet")
+        self.assertEqual(port.getValue(), "ValueSet")
 
         cx = Connection()
         port = Port(connection=cx, parent=ConnectionHub(HubType.OUTPUT))
@@ -164,9 +163,9 @@ class TestConnectionHub(unittest.TestCase):
         hub.addPort("testVar")
         with self.assertRaises(PortVariableNameError):
             hub.addPort("testVar")
-        hub.removePort("testVar")
+        hub.deletePort("testVar")
         with self.assertRaises(PortVariableNameError):
-            hub.removePort("testVar")
+            hub.deletePort("testVar")
 
     def test_rename_ports(self):
         hub = ConnectionHub(HubType.INPUT)

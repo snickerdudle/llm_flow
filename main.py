@@ -1,5 +1,6 @@
 # Sample code for running an example Graph
 from src.graph.graph import Graph
+from src.graph.blocks import Variable
 
 
 def main():
@@ -21,13 +22,13 @@ def main():
     graph.addBlock("E")
     graph.addBlock("F")
     graph.addBlock("G")
-    graph.addBlock("H")
+    graph.addBlock(Variable("H", None, {"hello": 1}))
 
     graph.connectBlocks("A", "B")
     graph.connectBlocks("A", "C")
     graph.connectBlocks("B", "D")
     graph.connectBlocks("C", "E")
-    graph.connectBlocks("H", "F")
+    graph.connectBlocks("H", "F", "hello")
     graph.connectBlocks("C", "F")
     graph.connectBlocks("D", "G")
     graph.connectBlocks("E", "G")

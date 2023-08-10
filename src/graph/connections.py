@@ -4,10 +4,7 @@ from enum import Enum
 from typing import Any, List, Optional, Set, Tuple, Union
 from uuid import uuid4
 
-from src.utils.decorators import (
-    check_editable,
-    enforce_type,
-)
+from src.utils.decorators import check_editable, enforce_type
 
 
 class PortVariableNameError(Exception):
@@ -39,12 +36,25 @@ class VariableValue:
     def makeUnreliable(self) -> None:
         self._reliable = False
 
-    def setValue(self, value: Any) -> None:
-        self._value = value
+    def makeAvailable(self) -> None:
         self._available = True
 
-    def getValue(self) -> Tuple[Any, bool]:
-        return self._value, self._reliable
+    def makeUnavailable(self) -> None:
+        self._available = False
+
+    def setValue(self, value: Any) -> None:
+        self._value = value
+        self.makeAvailable()
+        self.makeReliable()
+
+    def getValue(self) -> Any:
+        return self._value
+
+    def __str__(self) -> str:
+        return f"<VV({self._value}, {'A' if self.isAvailable else 'NA'}|{'R' if self.isReliable else 'NR'})>"
+
+    def __repr__(self):
+        return self.__str__()
 
 
 class Connection:
@@ -59,6 +69,7 @@ class Connection:
             from_port.addConnection(self)
         if to_port is not None:
             to_port.addConnection(self)
+            to_port.setValue(from_port.getValue())
         self.from_port = from_port
         self.to_port = to_port
 
@@ -132,6 +143,16 @@ class Port:
         return self._id
 
     @property
+    def name(self) -> Optional[str]:
+        return self.parent_hub.getPortName(self)
+
+    @property
+    def qualname(self) -> Optional[str]:
+        if self.parent_hub is None:
+            return None
+        return f"{self.parent_hub.qualname}.{self.name}"
+
+    @property
     def connections(self) -> Set[Connection]:
         return self._connections
 
@@ -151,28 +172,74 @@ class Port:
             raise ValueError("The parent hub is not set.")
         return self.parent_hub.isInput
 
-    def getValue(self) -> Tuple[Any, bool]:
+    @property
+    def isOutput(self) -> bool:
+        return not self.isInput
+
+    @property
+    def valueObject(self) -> VariableValue:
+        return self._value
+
+    @property
+    def isAvailable(self) -> bool:
+        return self._value.isAvailable
+
+    @property
+    def isReliable(self) -> bool:
+        return self._value.isReliable
+
+    def makeUnreliable(self) -> None:
+        self._value.makeUnreliable()
+
+    def makeUnavailable(self) -> None:
+        self._value.makeUnavailable()
+
+    def getValue(self) -> Any:
         return self._value.getValue()
 
-    def setValue(self, value: Any) -> None:
+    def setValue(self, value: Any, propagate: bool = True) -> None:
+        """Set the value of the port, and propagate the value to the connected
+        ports.
+
+        Args:
+            value (Any): The value to set.
+            propagate (bool, optional): Whether to propagate the value to the
+                connected ports. Defaults to True.
+
+        Raises:
+            ValueError: Raised if the parent hub is not set.
+        """
+        value_changed = self._value.getValue() != value
         self._value.setValue(value)
+        if self.isInput and propagate and value_changed:
+            self.parent_block.makeOutputsUnreliable()
+        elif self.isOutput and propagate and value_changed:
+            for connection in self.connections:
+                if connection.to_port is not None:
+                    connection.to_port.setValue(value, propagate=False)
 
     def addConnection(self, new_connection: Optional[Connection]) -> None:
         if self.isInput:
-            self._value.makeUnreliable()
+            self.makeUnreliable()
         self._connections.add(new_connection)
 
     def removeConnection(self, connection: Optional[Connection]) -> None:
         self._connections.discard(connection)
         if self.isInput:
-            self._value.makeUnreliable()
+            self.makeUnreliable()
 
     def removeAllConnections(self) -> None:
         for connection in self._connections:
             connection.removeSelfFromPsorts()
         self._connections.clear()
         if self.isInput:
-            self._value.makeUnreliable()
+            self.makeUnreliable()
+
+    def __str__(self) -> str:
+        return f"<P({self.name})>"
+
+    def __repr__(self) -> str:
+        return self.__str__()
 
 
 class HubType(Enum):
@@ -197,6 +264,16 @@ class ConnectionHub:
     @property
     def id(self) -> str:
         return self._id
+
+    @property
+    def name(self) -> Optional[str]:
+        return "<IN>" if self.isInput else "<OUT>"
+
+    @property
+    def qualname(self) -> Optional[str]:
+        if self.parent_block is None:
+            return None
+        return f"{self.parent_block.qualname}.{self.name}"
 
     @property
     def kind(self) -> HubType:
@@ -287,7 +364,7 @@ class ConnectionHub:
         return var_name
 
     @check_editable
-    def removePort(self, var_name: str) -> None:
+    def deletePort(self, var_name: str) -> None:
         """Remove a port from the hub."""
         if var_name in self.portDict:
             self.portDict[var_name].removeAllConnections()
@@ -327,6 +404,13 @@ class ConnectionHub:
     def getPort(self, var_name: str) -> Port:
         """Get the port with the given variable name."""
         return self.portDict.get(var_name)
+
+    @enforce_type({1: Port})
+    def getPortName(self, port: Port) -> Optional[str]:
+        for name, p in self.portDict.items():
+            if p == port:
+                return name
+        return None
 
     def getConnections(self) -> Set[Connection]:
         """Get the connections of the hub."""
