@@ -4,7 +4,14 @@ from enum import Enum
 from typing import Any, List, Optional, Set, Tuple, Union
 from uuid import uuid4
 
-from src.utils.utils import PortVariableNameError, check_editable, enforce_type
+from src.utils.decorators import (
+    check_editable,
+    enforce_type,
+)
+
+
+class PortVariableNameError(Exception):
+    pass
 
 
 class VariableValue:

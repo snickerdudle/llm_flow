@@ -1,10 +1,7 @@
 from functools import wraps
 from inspect import signature
 from typing import List
-
-
-class PortVariableNameError(Exception):
-    pass
+from src.utils.logging import Logger
 
 
 class HubEditError(Exception):
@@ -92,3 +89,33 @@ def check_editable(func):
         return func(self, *args, **kwargs)
 
     return wrapper
+
+
+def log_operation(save_to_file: bool = False):
+    """Decorator to log operations on the block."""
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            logger = Logger()
+            logger.log(
+                f"Operation {func.__name__} called on block {self.name}", func
+            )
+
+            results = None
+            try:
+                results = func(self, *args, **kwargs)
+            except Exception as e:
+                logger.log(
+                    f"Operation {func.__name__} on block {self.name} failed with error: {e.__class__.__name__}",
+                    func,
+                )
+
+            if save_to_file:
+                logger.writeBufferToFile()
+
+            return results
+
+        return wrapper
+
+    return decorator

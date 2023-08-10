@@ -6,7 +6,7 @@ from uuid import uuid4
 
 from src.graph.blocks import BaseBlock
 from src.graph.connections import Connection
-from src.utils.utils import autoBlockRetrieve
+from src.utils.decorators import autoBlockRetrieve
 from functools import wraps
 
 BlockCollectionType = Set[BaseBlock]

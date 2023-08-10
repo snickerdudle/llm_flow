@@ -35,6 +35,8 @@ def main():
 
     print(graph.getBlockEvaluationOrder())
 
+    graph.runAllBlocks()
+
 
 if __name__ == "__main__":
     main()

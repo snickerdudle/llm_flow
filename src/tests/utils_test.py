@@ -1,5 +1,5 @@
 import unittest
-from src.utils.utils import enforce_type
+from src.utils.decorators import enforce_type
 
 
 class TestEnforceTypeDecorator(unittest.TestCase):

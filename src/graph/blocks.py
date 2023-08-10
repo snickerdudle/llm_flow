@@ -11,6 +11,8 @@ from src.graph.connections import (
     PortVariableNameError,
 )
 
+from src.utils.decorators import log_operation
+
 
 class BaseBlock:
     """The base class for all blocks in the graph."""
@@ -198,6 +200,10 @@ class BaseBlock:
         """Get all the neighbors of the block."""
         return self.getIncomingNeighbors().union(self.getOutgoingNeighbors())
 
+    @log_operation(True)
     def run(self) -> None:
         """Run the block."""
-        raise NotImplementedError
+        # raise NotImplementedError
+        print(f"Running {self.name}")
+        print(f"Inputs: {self.getIncomingNeighbors()}")
+        print(f"Outputs: {self.getOutgoingNeighbors()}")
