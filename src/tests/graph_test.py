@@ -1,8 +1,6 @@
 import unittest
-from unittest.mock import MagicMock
-from queue import Queue
 from src.graph.graph import Graph
-from src.graph.blocks import BaseBlock
+from src.graph.blocks.block import BaseBlock
 
 
 class TestGraph(unittest.TestCase):
@@ -61,7 +59,7 @@ class TestGraph(unittest.TestCase):
 
     # Add more tests for other scenarios, including more complex graph structures.
     def test_getBlockEvaluationOrder_noStartBlock_complexGraph(self):
-        """
+        r"""
              A
             / \
             B  C
@@ -224,6 +222,35 @@ class TestGraph(unittest.TestCase):
             blockA.getOutgoingConnections(), blockB.getIncomingConnections()
         )
         self.assertEqual(len(graph.connections), 1)
+
+    def test_all_added_blocks_have_parent(self):
+        graph = Graph()
+        blockA = BaseBlock("A")
+        blockB = BaseBlock("B")
+        blockC = BaseBlock("C")
+        blockD = BaseBlock("D")
+        blockE = BaseBlock("E")
+        blockF = BaseBlock("F")
+        blockG = BaseBlock("G")
+        graph.addBlock(blockA)
+        graph.addBlock(blockB)
+        graph.addBlock(blockC)
+        graph.addBlock(blockD)
+        graph.addBlock(blockE)
+        graph.addBlock(blockF)
+        graph.addBlock(blockG)
+
+        graph.addBlock("H")
+        graph.addBlock("I")
+        graph.addBlock("J")
+        graph.addBlock("K")
+        graph.addBlock("L")
+        graph.addBlock("M")
+        graph.addBlock("N")
+
+        for block in graph.blocks:
+            self.assertIsNotNone(block.graph)
+            self.assertEqual(block.graph, graph)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 # Routines-related functions and classes
 from typing import Optional, Any, List, Union
 from collections import UserList
-from src.graph.blocks import BaseBlock
+from src.graph.blocks.block import BaseBlock
 
 
 RoutineListType = Union[List["Routine"], "RoutineCollection"]

@@ -1,1 +1,8 @@
 flask
+docker
+fastapi
+uvicorn[standard]
+pika
+redis
+nameko
+langchain

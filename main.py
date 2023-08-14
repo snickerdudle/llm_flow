@@ -1,6 +1,7 @@
 # Sample code for running an example Graph
 from src.graph.graph import Graph
-from src.graph.blocks import Variable
+from src.graph.blocks.block import Variable
+from src.graph.blocks.code import Code
 
 
 def main():
@@ -21,7 +22,7 @@ def main():
     graph.addBlock("D")
     graph.addBlock("E")
     graph.addBlock("F")
-    graph.addBlock("G")
+    graph.addBlock(Code("G", code="return 3 + 4"))
     graph.addBlock(Variable("H", None, {"hello": 1}))
 
     graph.connectBlocks("A", "B")

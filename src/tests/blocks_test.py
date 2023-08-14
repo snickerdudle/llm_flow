@@ -1,7 +1,7 @@
 # Tests for the graph blocks.
 
 import unittest
-from graph.blocks import (
+from src.graph.blocks.block import (
     BaseBlock,
 )
 from src.graph.connections import (

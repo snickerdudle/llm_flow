@@ -4,8 +4,9 @@ from typing import List, Set, Optional, Union
 from queue import Queue
 from uuid import uuid4
 
-from src.graph.blocks import BaseBlock
+from src.graph.blocks.block import BaseBlock
 from src.graph.connections import Connection
+from src.graph.graph_env import GraphExecutionEnvironment
 from src.utils.decorators import autoBlockRetrieve
 from functools import wraps
 
@@ -22,6 +23,9 @@ class Graph:
         self._name = name or ""
         self._blocks = blocks or {}
         self._connections: ConnectionCollection = set()
+
+        self.graph_exec_env: GraphExecutionEnvironment = None
+        self.getGraphExecutionEnvironment()
 
     @property
     def name(self) -> str:
@@ -74,7 +78,7 @@ class Graph:
                 if block in self._blocks:
                     block = self._blocks[block]
                 else:
-                    block = BaseBlock(name=block)
+                    block = BaseBlock(name=block, graph=self)
         else:
             if block is None:
                 raise ValueError("Block cannot be None")
@@ -91,6 +95,7 @@ class Graph:
             raise ValueError(f"Block {block} already in graph")
         block = self.tryGetOrCreateNewBlock(block)
         self._blocks[block.name] = block
+        block.graph = self
 
     @autoBlockRetrieve(1)
     def removeBlock(self, block: Union[BaseBlock, str]) -> None:
@@ -101,6 +106,7 @@ class Graph:
         if block_name not in self._blocks:
             raise ValueError(f"Block {block_name} not in graph")
         block = self._blocks[block_name]
+        block.graph = None
 
         for connection in self.connections:
             if connection.from_block == block or connection.to_block == block:
@@ -200,8 +206,10 @@ class Graph:
         return following_blocks
 
     def getBlockEvaluationOrder(
-        self, start_block: Optional[BaseBlock] = None
-    ) -> None:
+        self,
+        start_block: Optional[BaseBlock] = None,
+        blocks_to_level: Optional[dict] = None,
+    ) -> List[BaseBlock]:
         """Return the order in which the blocks should be evaluated.
 
         The start block is the block from which the execution should start.
@@ -226,11 +234,13 @@ class Graph:
         Args:
             start_block (Optional[BaseBlock]): The block from which the
                 execution should start.
+            blocks_to_level (Optional[dict]): The level of each block. Provides
+                a way to cache the levels of the blocks.
 
         Returns:
             List[BaseBlock]: The order in which the blocks should be evaluated.
         """
-        blocks_to_level = {}
+        blocks_to_level = {} if blocks_to_level is None else blocks_to_level
         visited_blocks = set()
         blocks_queue = Queue()
 
@@ -266,13 +276,14 @@ class Graph:
             }
 
         # First sort the blocks by their name
-        blocks_to_level = sorted(
+        sorted_blocks = sorted(
             blocks_to_level.items(), key=lambda x: x[0].name
         )
         # Sort the blocks by their level
-        blocks_to_level = sorted(blocks_to_level, key=lambda x: x[1])
+        sorted_blocks = sorted(sorted_blocks, key=lambda x: x[1])
+        sorted_blocks = [block for block, _ in sorted_blocks]
 
-        return [block for block, _ in blocks_to_level]
+        return sorted_blocks
 
     def runAllBlocks(self) -> None:
         """Run the graph from start to finish."""
@@ -289,3 +300,33 @@ class Graph:
         block_evaluation_order = self.getBlockEvaluationOrder(block)
         for block in block_evaluation_order:
             block.run()
+
+    def getDiagonRepr(self) -> str:
+        """Output a series of connection statements that look like
+            A -> B
+            A -> C
+            C -> D
+            ...
+
+        Returns:
+            str: The string representation of the graph.
+        """
+        output = []
+        for block in self.blocks:
+            for neighbor in block.getOutgoingNeighbors():
+                output.append(f"{block.name} -> {neighbor.name}")
+
+        output = sorted(output)
+        output = "\n".join(output)
+
+        return output
+
+    def getGraphExecutionEnvironment(self) -> GraphExecutionEnvironment:
+        """Get the Graph execution environment for the graph.
+
+        Returns:
+            GraphExecutionEnvironment: The Graph execution environment for the graph.
+        """
+        if self.graph_exec_env is None:
+            self.graph_exec_env = GraphExecutionEnvironment(graph=self)
+        return self.graph_exec_env

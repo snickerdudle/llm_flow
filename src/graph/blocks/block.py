@@ -1,6 +1,6 @@
 # Code describing the functional blocks of the graph.
 from functools import wraps
-from typing import Any, List, Optional, Set, Union
+from typing import Any, Optional, Set
 from uuid import uuid4
 
 from src.graph.connections import (
@@ -16,7 +16,10 @@ class BaseBlock:
     """The base class for all blocks in the graph."""
 
     def __init__(
-        self, name: Optional[str] = None, description: Optional[str] = None
+        self,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
+        graph: Any = None,
     ):
         self._id = uuid4().hex
         self._name = name
@@ -31,6 +34,8 @@ class BaseBlock:
         # as unreliable if the block has been changed, but the outputs have
         # not been updated yet.
         self.changes_affect_reliability = True
+
+        self.graph = None
 
     @property
     def id(self) -> str:
@@ -280,6 +285,16 @@ class Variable(BaseBlock):
     def deleteVariable(self, var_name: str) -> None:
         """Delete a variable."""
         self.outputs.deletePort(var_name)
+
+    def getVariable(
+        self, var_name: str, fallback: Optional[Any] = None
+    ) -> Optional[Any]:
+        """Get the value of a variable."""
+        return self.variables.get(var_name, fallback)
+
+    def clearAllVariables(self) -> None:
+        """Clear all variables."""
+        self.outputs.clearAllPorts()
 
     def editVariableValue(self, var_name: str, new_value: Any) -> None:
         """Edit the value of a variable."""

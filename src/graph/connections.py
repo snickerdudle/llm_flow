@@ -326,6 +326,9 @@ class ConnectionHub:
             else:
                 connection.from_port = port
 
+    def __len__(self) -> int:
+        return self.numPorts
+
     @check_editable
     @enforce_type({1: str, 2: "Connection"})
     def addPort(
@@ -373,6 +376,12 @@ class ConnectionHub:
             raise PortVariableNameError(
                 f"Variable name '{var_name}' does not exist."
             )
+
+    @check_editable
+    def clearAllPorts(self) -> None:
+        """Remove all ports from the hub."""
+        for var_name in self.portNames:
+            self.deletePort(var_name)
 
     @check_editable
     def renamePort(self, old_var_name: str, new_var_name: str) -> str:

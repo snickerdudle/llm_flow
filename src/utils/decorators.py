@@ -1,7 +1,7 @@
 from functools import wraps
 from inspect import signature
 from typing import List
-from src.utils.logging import Logger
+from src.utils.logger import Logger
 
 
 class HubEditError(Exception):
