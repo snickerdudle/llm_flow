@@ -1,5 +1,5 @@
 import unittest
-from src.graph.routines import Routine, RoutineCollection
+from src.graph.routines.routines import Routine, RoutineCollection
 
 
 class TestRoutine(unittest.TestCase):
