@@ -5,13 +5,8 @@ from src.graph.blocks.block import Variable
 class Code(Variable):
     """A block that contains code."""
 
-    def __init__(
-        self,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        code: Optional[str] = None,
-    ):
-        super().__init__(name, description)
+    def __init__(self, *args, code: Optional[str] = None, **kwargs):
+        super().__init__(*args, **kwargs)
 
         self._code = code or "print('Hello World!')"
         self.changes_affect_reliability = True

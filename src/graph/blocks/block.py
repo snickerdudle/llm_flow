@@ -1,7 +1,7 @@
 # Code describing the functional blocks of the graph.
 from functools import wraps
 from typing import Any, Optional, Set
-from uuid import uuid4
+from src.utils.io import randomIdentifier
 
 from src.graph.connections import (
     Connection,
@@ -20,8 +20,9 @@ class BaseBlock:
         name: Optional[str] = None,
         description: Optional[str] = None,
         graph: Any = None,
+        id: Optional[str] = None,
     ):
-        self._id = uuid4().hex
+        self._id = id or randomIdentifier()
         self._name = name
         self._description = description
         self._inputs = self.initilizeInputs()
@@ -242,17 +243,48 @@ class BaseBlock:
         for portname in self.outputs.portDict:
             print(f"  {portname}")
 
+    def serialize(self) -> dict[str, Any]:
+        """Serialize the block."""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "inputs": self.inputs.serialize() if self.inputs else {},
+            "outputs": self.outputs.serialize() if self.outputs else {},
+            "type": self.__class__.__name__,
+        }
+
+    @classmethod
+    def deserialize(
+        cls,
+        data: dict[str, Any],
+        connections: Optional[dict[str, "Connection"]] = None,
+    ) -> "BaseBlock":
+        """Deserialize the block."""
+        block = cls(
+            name=data["name"], description=data["description"], id=data["id"]
+        )
+        if data["inputs"]:
+            block._inputs = ConnectionHub.deserialize(
+                data["inputs"], parent=block, connections=connections
+            )
+        if data["outputs"]:
+            block._outputs = ConnectionHub.deserialize(
+                data["outputs"], parent=block, connections=connections
+            )
+        return block
+
 
 class Variable(BaseBlock):
     """A variable block, containing 1 or more values."""
 
     def __init__(
         self,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
+        *args,
         variables: Optional[dict[str, Any]] = None,
+        **kwargs,
     ):
-        super().__init__(name, description)
+        super().__init__(*args, **kwargs)
 
         # Iterate through the variables and add them as output ports
         variables = variables or {"var1": 0}

@@ -1,0 +1,4 @@
+AMQP_URI: 'pyamqp://guest:guest@localhost'
+
+REDIS_URIS:
+ development: 'redis://localhost:6380/0'

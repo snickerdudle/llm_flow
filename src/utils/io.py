@@ -1,6 +1,7 @@
 import base64
 import pickle
 from typing import Any
+from shortuuid import ShortUUID
 
 
 def serializePythonObject(obj: Any) -> str:
@@ -31,3 +32,8 @@ def deserializePythonObject(obj_str: str) -> Any:
     """
     result_obj = pickle.loads(base64.b64decode(obj_str))
     return result_obj
+
+
+def randomIdentifier(length: int = 8) -> str:
+    """Generate a random identifier."""
+    return ShortUUID().random(length=length)

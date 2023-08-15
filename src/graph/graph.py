@@ -1,14 +1,21 @@
 # Code describing the graph
 from inspect import signature
-from typing import List, Set, Optional, Union
 from queue import Queue
-from uuid import uuid4
+from typing import List, Optional, Set, Union
 
 from src.graph.blocks.block import BaseBlock
+from src.graph.blocks.block import Variable as VariableBlock
+from src.graph.blocks.code import Code as CodeBlock
+from src.graph.blocks.llm import LLMBlock
 from src.graph.connections import Connection
 from src.graph.graph_env import GraphExecutionEnvironment
 from src.utils.decorators import autoBlockRetrieve
-from functools import wraps
+
+from src.utils.io import (
+    serializePythonObject,
+    deserializePythonObject,
+    randomIdentifier,
+)
 
 BlockCollectionType = Set[BaseBlock]
 ConnectionCollection = Set[Connection]
@@ -19,13 +26,39 @@ class Graph:
         self,
         name: Optional[str] = None,
         blocks: Optional[BlockCollectionType] = None,
+        id: Optional[str] = None,
     ):
+        self._id = id or randomIdentifier()
         self._name = name or ""
         self._blocks = blocks or {}
         self._connections: ConnectionCollection = set()
 
         self.graph_exec_env: GraphExecutionEnvironment = None
         self.getGraphExecutionEnvironment()
+
+    def __eq__(self, other_graph: "Graph") -> bool:
+        if self.name != other_graph.name:
+            print("Name different")
+            return False
+
+        block_ids = {block.id for block in self.blocks}
+        other_block_ids = {block.id for block in other_graph.blocks}
+        if block_ids != other_block_ids:
+            print("Block ids different")
+            return False
+
+        connection_ids = {connection.id for connection in self.connections}
+        other_connection_ids = {
+            connection.id for connection in other_graph.connections
+        }
+        if connection_ids != other_connection_ids:
+            print("Connection ids different")
+            return False
+        return True
+
+    @property
+    def id(self):
+        return self._id
 
     @property
     def name(self) -> str:
@@ -330,3 +363,107 @@ class Graph:
         if self.graph_exec_env is None:
             self.graph_exec_env = GraphExecutionEnvironment(graph=self)
         return self.graph_exec_env
+
+    def serialize(self, convert_to_bytes: bool = True) -> dict:
+        """Serialize the graph.
+
+        Returns a dictionary with 3 keys:
+            blocks: A dictionary of the blocks in the graph, with the block
+                names as keys and the serialized blocks as values.
+            connections: A list of the serialized connections in the graph.
+            metadata: A dictionary of metadata about the graph.
+        """
+        blocks = {block.id: block.serialize() for block in self.blocks}
+        connections = {
+            connection.id: connection.serialize()
+            for connection in self.connections
+        }
+        metadata = {"name": self.name, "id": self.id}
+
+        final_result = {
+            "blocks": blocks,
+            "connections": connections,
+            "metadata": metadata,
+        }
+
+        if convert_to_bytes:
+            final_result = serializePythonObject(final_result)
+
+        return final_result
+
+    @classmethod
+    def deserialize(
+        cls, serialized_graph: Union[dict, Union[str, bytes]]
+    ) -> "Graph":
+        """Deserialize the graph.
+
+        Args:
+            serialized_graph (dict): The serialized graph.
+
+        Returns:
+            Graph: The deserialized graph.
+        """
+        if not isinstance(serialized_graph, dict):
+            serialized_graph = deserializePythonObject(serialized_graph)
+
+        # Initialize the graph
+        graph = cls(name=serialized_graph["metadata"]["name"])
+
+        connections = {}
+        for c_id, serialized_connection in serialized_graph[
+            "connections"
+        ].items():
+            connection = Connection.deserialize(serialized_connection)
+            graph.addConnection(connection)
+            connections[c_id] = connection
+
+        for _, serialized_block in serialized_graph["blocks"].items():
+            block = cls.deserialize_block(
+                serialized_block, connections=connections
+            )
+            graph.addBlock(block)
+
+        return graph
+
+    @classmethod
+    def deserialize_block(
+        cls,
+        serialized_block: dict,
+        connections: Optional[dict[str, Connection]] = None,
+    ) -> BaseBlock:
+        """Deserialize a block.
+
+        Args:
+            serialized_block (dict): The serialized block.
+            connections (Optional[dict[str, Connection]]): A dictionary of
+                connections, with the connection ids as keys and the connections
+                as values.
+
+        Returns:
+            BaseBlock: The deserialized block.
+        """
+        block_type = cls.blockTypeToClass(serialized_block["type"])
+        return block_type.deserialize(
+            serialized_block, connections=connections
+        )
+
+    @classmethod
+    def blockTypeToClass(cls, block_type: str) -> BaseBlock:
+        """Convert a block type to a class.
+
+        Args:
+            block_type (str): The type of the block.
+
+        Returns:
+            BaseBlock: The class corresponding to the block type.
+        """
+        if block_type == "BaseBlock":
+            return BaseBlock
+        elif block_type == "Variable":
+            return VariableBlock
+        elif block_type == "Code":
+            return CodeBlock
+        elif block_type == "LLMBlock":
+            return LLMBlock
+        else:
+            raise ValueError(f"Unknown block type {block_type}")

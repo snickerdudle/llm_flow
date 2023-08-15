@@ -1,9 +1,7 @@
 # Tests for the graph blocks.
 
 import unittest
-from src.graph.blocks.block import (
-    BaseBlock,
-)
+from src.graph.blocks.block import BaseBlock, Variable
 from src.graph.connections import (
     ConnectionHub,
     HubType,
@@ -146,6 +144,61 @@ class TestBaseBlock(unittest.TestCase):
         self.assertSetEqual(
             self.block3.getAllNeighbors(), {self.block1, self.block2}
         )
+
+    def test_serialize(self):
+        block = BaseBlock(name="TestBlock", id="A")
+        serialized = block.serialize()
+        print(serialized)
+
+        expected_serialized = {
+            "id": "A",
+            "name": "TestBlock",
+            "description": "NO_DESCRIPTION",
+            "inputs": {},
+            "outputs": {},
+            "type": "BaseBlock",
+        }
+
+        self.assertDictEqual(serialized, expected_serialized)
+
+
+class TestVariable(unittest.TestCase):
+    def test_serialize(self):
+        block = Variable(name="TestBlock", id="A")
+        serialized = block.serialize()
+
+        expected_serialized = {
+            "id": "A",
+            "name": "TestBlock",
+            "description": "NO_DESCRIPTION",
+            "inputs": {},
+            "outputs": {
+                "id": "fb812a057a7f49b68d590f78638455f6",
+                "kind": "OUTPUT",
+                "ports": {
+                    "var1": {
+                        "id": "5ef4505ee4484ca8adf5f027f44db342",
+                        "value": 0,
+                        "connections": [],
+                    }
+                },
+            },
+            "type": "Variable",
+        }
+
+        self.assertIn("id", serialized["outputs"])
+        serialized["outputs"].pop(
+            "id"
+        )  # Remove the id, since it is randomly generated
+        expected_serialized["outputs"].pop(
+            "id"
+        )  # Remove the id, since it is randomly generated
+
+        self.assertIn("id", serialized["outputs"]["ports"]["var1"])
+        serialized["outputs"]["ports"]["var1"].pop("id")
+        expected_serialized["outputs"]["ports"]["var1"].pop("id")
+
+        self.assertDictEqual(serialized, expected_serialized)
 
 
 if __name__ == "__main__":

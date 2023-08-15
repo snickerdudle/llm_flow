@@ -2,7 +2,7 @@
 from collections import OrderedDict
 from enum import Enum
 from typing import Any, List, Optional, Set, Tuple, Union
-from uuid import uuid4
+from src.utils.io import randomIdentifier
 
 from src.utils.decorators import check_editable, enforce_type
 
@@ -12,8 +12,8 @@ class PortVariableNameError(Exception):
 
 
 class VariableValue:
-    def __init__(self, value: Optional[Any] = None):
-        self._id = uuid4().hex
+    def __init__(self, value: Optional[Any] = None, id: Optional[str] = None):
+        self._id = id or randomIdentifier()
         self._value = value
         self._available = self._value is not None
         self._reliable = False
@@ -63,8 +63,9 @@ class Connection:
         self,
         from_port: Optional["Port"] = None,
         to_port: Optional["Port"] = None,
+        id: Optional[str] = None,
     ):
-        self._id = uuid4().hex
+        self._id = id or randomIdentifier()
         if from_port is not None:
             from_port.addConnection(self)
         if to_port is not None:
@@ -113,6 +114,22 @@ class Connection:
         if self.to_port is not None:
             self.to_port.removeConnection(self)
 
+    def serialize(self) -> dict[str, Any]:
+        """Serialize the connection."""
+        return {
+            "id": self.id,
+            "from_port": self.from_port.id
+            if self.from_port is not None
+            else None,
+            "to_port": self.to_port.id if self.to_port is not None else None,
+        }
+
+    @classmethod
+    def deserialize(cls, data: dict[str, Any]):
+        """Deserialize the connection."""
+        connection = cls(id=data["id"])
+        return connection
+
 
 class Port:
     @enforce_type({2: "Connection", 3: "ConnectionHub"})
@@ -121,8 +138,9 @@ class Port:
         value: Optional[Union[VariableValue, Any]] = None,
         connection: Optional[Connection] = None,
         parent: Optional["ConnectionHub"] = None,
+        id: Optional[str] = None,
     ):
-        self._id = uuid4().hex
+        self._id = id or randomIdentifier()
         if value is not None:
             if not isinstance(value, VariableValue):
                 value = VariableValue(value)
@@ -241,6 +259,40 @@ class Port:
     def __repr__(self) -> str:
         return self.__str__()
 
+    def serialize(self) -> dict[str, Any]:
+        """Serialize the port."""
+        return {
+            "id": self.id,
+            "value": self.getValue(),
+            "connections": [connection.id for connection in self.connections],
+        }
+
+    @classmethod
+    def deserialize(
+        cls,
+        data: dict[str, Any],
+        parent: Optional[Any] = None,
+        connections: dict[str, Connection] = None,
+    ):
+        """Deserialize the port."""
+        port = cls(parent=parent, id=data["id"])
+        port.setValue(VariableValue(data["value"]))
+        port.makeUnreliable()
+
+        connections = connections or {}
+        for connection_id in data["connections"]:
+            if connection_id not in connections:
+                raise ValueError(
+                    f"Connection with id {connection_id} not found."
+                )
+            connection = connections[connection_id]
+            port.addConnection(connection)
+            if port.isInput:
+                connection.to_port = port
+            else:
+                connection.from_port = port
+        return port
+
 
 class HubType(Enum):
     INPUT = 1
@@ -254,8 +306,9 @@ class ConnectionHub:
         kind: Optional[HubType] = HubType.INPUT,
         parent: Optional[Any] = None,
         editable: Optional[bool] = True,
+        id: Optional[str] = None,
     ):
-        self._id = uuid4().hex
+        self._id = id or randomIdentifier()
         self._kind = kind
         self._parent = parent
         self._ports = OrderedDict()
@@ -450,3 +503,29 @@ class ConnectionHub:
                 if connection.from_hub == hub or connection.to_hub == hub:
                     connections.add(connection)
         return connections
+
+    def serialize(self) -> dict[str, Any]:
+        """Serialize the hub."""
+        return {
+            "id": self.id,
+            "kind": self.kind.name,
+            "ports": {
+                name: port.serialize() for name, port in self.portDict.items()
+            },
+        }
+
+    @classmethod
+    def deserialize(
+        cls,
+        data: dict[str, Any],
+        parent: Optional[Any] = None,
+        connections: Optional[dict["str", Any]] = None,
+    ):
+        """Deserialize the hub."""
+        hub = cls(kind=HubType[data["kind"]], parent=parent)
+        for name, port_data in data["ports"].items():
+            port = Port.deserialize(
+                port_data, parent=hub, connections=connections
+            )
+            hub.portDict[name] = port
+        return hub

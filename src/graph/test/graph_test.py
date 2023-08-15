@@ -1,6 +1,9 @@
 import unittest
+from unittest.mock import PropertyMock, patch
+
+from mock import MagicMock
 from src.graph.graph import Graph
-from src.graph.blocks.block import BaseBlock
+from src.graph.blocks.block import BaseBlock, Variable
 
 
 class TestGraph(unittest.TestCase):
@@ -251,6 +254,74 @@ class TestGraph(unittest.TestCase):
         for block in graph.blocks:
             self.assertIsNotNone(block.graph)
             self.assertEqual(block.graph, graph)
+
+    def test_serialize_graph(self):
+        """Should return a dictionary."""
+        expected_dict = {
+            "blocks": {
+                "a_block_id_A": {
+                    "name": "A",
+                    "inputs": {},
+                    "outputs": {},
+                    "type": "BaseBlock",
+                    "id": "a_block_id_A",
+                    "description": "NO_DESCRIPTION",
+                },
+                "a_block_id_B": {
+                    "name": "B",
+                    "inputs": {},
+                    "outputs": {},
+                    "type": "BaseBlock",
+                    "id": "a_block_id_B",
+                    "description": "NO_DESCRIPTION",
+                },
+            },
+            "connections": {},
+            "metadata": {"name": "sample_name", "id": "graph_id"},
+        }
+
+        graph = Graph("sample_name", id="graph_id")
+        blockA = BaseBlock("A", id="a_block_id_A")
+        blockB = BaseBlock("B", id="a_block_id_B")
+
+        graph.addBlock(blockA)
+        graph.addBlock(blockB)
+
+        a = graph.serialize()
+
+        self.assertDictEqual(graph.serialize(), expected_dict)
+
+    def test_deserialize_graph(self):
+        expected_graph = Graph("sample_name")
+        blockA = BaseBlock("A", id="a_block_id_A")
+        blockB = BaseBlock("B", id="a_block_id_B")
+
+        expected_graph.addBlock(blockA)
+        expected_graph.addBlock(blockB)
+
+        expected_graph.connectBlocks(blockA, blockB)
+
+        serialized_graph = expected_graph.serialize()
+
+        new_graph = Graph.deserialize(serialized_graph)
+
+        self.assertEqual(Graph.deserialize(serialized_graph), expected_graph)
+
+    def test_deserialize_graph_different_types(self):
+        expected_graph = Graph("sample_name")
+        blockA = BaseBlock("A", id="a_block_id_A")
+        blockB = Variable("B", id="a_block_id_B")
+
+        expected_graph.addBlock(blockA)
+        expected_graph.addBlock(blockB)
+
+        expected_graph.connectBlocks(blockA, blockB)
+
+        serialized_graph = expected_graph.serialize()
+
+        new_graph = Graph.deserialize(serialized_graph)
+
+        self.assertEqual(Graph.deserialize(serialized_graph), expected_graph)
 
 
 if __name__ == "__main__":

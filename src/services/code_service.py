@@ -3,21 +3,19 @@ import pickle
 import tarfile
 from io import BytesIO
 from typing import Any, List, Optional
-from uuid import uuid4
 
 from nameko.extensions import DependencyProvider
 from nameko.rpc import rpc
 
-from src.utils.io import deserializePythonObject
-
 import docker
+from src.utils.io import deserializePythonObject, randomIdentifier
 
 
 class DockerContainerManager(DependencyProvider):
     """A simple DependencyProvider to manage a Docker container."""
 
     client = None
-    container_name: str = "long_running_python_runner" + uuid4().hex[-8:]
+    container_name: str = f"long_running_python_runner_{randomIdentifier()}"
     image_name: str = "python_runner"
     container = None
 

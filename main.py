@@ -37,7 +37,7 @@ def main():
 
     print(graph.getBlockEvaluationOrder())
 
-    graph.runAllBlocks()
+    print(graph.serialize())
 
 
 if __name__ == "__main__":
