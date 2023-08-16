@@ -8,3 +8,4 @@ nameko
 nameko-redis
 langchain
 shortuuid
+nameko-http

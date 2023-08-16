@@ -22,5 +22,13 @@ nameko run src.services.code_service &
 # Run the LLM service
 nameko run src.services.llm_service &
 
+# Run the Auth service
+nameko run src.services.auth_service --config src/services/config.yml &
+
 # Run the Graph service
-nameko run src.services.graph_service --config src/services/config.yml &
+nameko run src.services.graph_execution_service --config src/services/config.yml &
+nameko run src.services.graph_manager_service --config src/services/config.yml &
+
+
+# Run the Gateway service last
+nameko run src.services.gateway_service --config src/services/config.yml &

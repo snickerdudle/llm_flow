@@ -37,3 +37,27 @@ def deserializePythonObject(obj_str: str) -> Any:
 def randomIdentifier(length: int = 8) -> str:
     """Generate a random identifier."""
     return ShortUUID().random(length=length)
+
+
+def permissionsToInt(
+    read: bool = False,
+    write: bool = False,
+    execute: bool = False,
+    *other_permissions,
+):
+    """Converts permissions to an integer."""
+    permissions = 0
+    if read:
+        permissions += 1
+    if write:
+        permissions += 2
+    if execute:
+        permissions += 4
+
+    cur_level = 8
+    for permission in other_permissions:
+        if permission:
+            permissions += cur_level
+        cur_level *= 2
+
+    return permissions
