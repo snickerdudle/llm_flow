@@ -1,2 +1,9 @@
-# tribe
-It takes a tribe to do anything
+# llm_flow
+Often times when making LLM-based applications I find myself wishing I had a better way to string long chains of LLM prompts together. Not only that, but based on the outputs of certain LLM-based transformations, I would like to have branching logic, arbitrarily executable code blocks, API calls and other nefariously positioned magical functional blocks. All this requires infrastructure, and this repo is my attempt at writing all this infra from scratch (half as fun practice, half as useful tooling for future use).
+
+This library is a work in progress. It defines a set of primitives that can be combined and run in massively scalable ways, thanks to the microservice architecture. Thousands of API calls, code block executions and other functions can all be run in parallel, all based on a DAG that gets created out of the primitives and connected up as the user prefers.
+
+The `src` directory contains all the code necessary to make this possible. It holds the following sections:
+ * `graph` - this is where all the Graph-related code lives. This code defines the Blocks, their connections, Ports and Variables for connecting the Blocks to one another. This is also where the "Paths" through the graph (routines) get defined.
+ * `services` - this is where the infrastructure allowing all of the code to be run in parallel, in a distributed and load balanced way, is defined. Each service (gateway, code, llm, etc) is responsible for dealing with their respective blocks' processing, and when a Routine gets defined and executed, the DAG of the task is broken up into pieces and passed to the various microservices in the correct order.
+ * `utils` - finally, utils is where all the helper code lives. This is the code that allows for easy typechecking, IO, logging and other such functionality.
